@@ -1,0 +1,9 @@
+absl-py
+hid
+matplotlib
+numpy
+pupper_hardware_interface@ git+https://github.com/stanfordroboticsclub/Pupper-V2-Interface.git
+pyserial
+quadprog
+scipy
+transforms3d
