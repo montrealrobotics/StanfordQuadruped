@@ -55,14 +55,13 @@ def main(FLAGS):
     else:
         print("Not zeroing motors!")
 
-    if FLAGS.home:
-        print("Homing motors...", end="", flush=True)
-        hardware_interface.home_motors()        
-        time.sleep(5)
-        print("Done.")
+    # if not FLAGS.nohome:
+    #     print("Homing motors...", end="", flush=True)
+    #     hardware_interface.home_motors()
+    #     time.sleep(5)
+    #     print("Done.")
         
     print("Waiting for L1 to activate robot.")
-
     last_loop = time.time()
     try:
         while True:
@@ -70,6 +69,8 @@ def main(FLAGS):
                 time.sleep(0.02)
                 joystick_interface.set_color(config.ps4_deactivated_color)
                 command = joystick_interface.get_command(state)
+                if not command:
+                    continue
                 if command.activate_event == 1:
                     print("Robot activated.")
                     joystick_interface.set_color(config.ps4_color)
@@ -88,7 +89,7 @@ def main(FLAGS):
                       print(any_data['ts'])
                 if now - last_loop >= config.dt:
                     command = joystick_interface.get_command(state)
-                    if command.activate_event == 1:
+                    if command.deactivate_event == 1:
                         print("Deactivating Robot")
                         print("Waiting for L1 to activate robot.")
                         time.sleep(0.1)
@@ -121,6 +122,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--zero", help="zero the motors", action="store_true")
     parser.add_argument("--log", help="log pupper data to file", action="store_true")
-    parser.add_argument("--home", help="home the motors (moves the legs)", action="store_true")
+    # parser.add_argument("--home", help="home the motors (moves the legs)", action="store_true")
+    parser.add_argument("--nohome", help="disable homing the motors on startup", action="store_true")
     FLAGS = parser.parse_args()
     main(FLAGS)

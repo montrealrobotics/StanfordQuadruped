@@ -5,6 +5,7 @@ from transforms3d.euler import euler2mat
 class SwingController:
     def __init__(self, config):
         self.config = config
+        self.prev_foot_locations = self.config.default_stance + np.array([0, 0, self.config.default_z_ref])[:, np.newaxis]
 
     def raibert_touchdown_location(self, leg_index, command):
         delta_p_2d = (
@@ -23,7 +24,7 @@ class SwingController:
         R = euler2mat(0, 0, theta)
         return R @ self.config.default_stance[:, leg_index] + delta_p
 
-    def swing_height(self, swing_phase, triangular=True):
+    def swing_height(self, swing_phase, triangular=False):
         if triangular:
             if swing_phase < 0.5:
                 swing_height_ = swing_phase / 0.5 * self.config.z_clearance
@@ -31,6 +32,14 @@ class SwingController:
                 swing_height_ = self.config.z_clearance * (
                     1 - (swing_phase - 0.5) / 0.5
                 )
+        else:
+            interpolant = lambda t: self.config.z_clearance * (-2 * t ** 3 + 3 * t ** 2)
+            if swing_phase < 0.5:
+                segment_phase = swing_phase / 0.5
+                swing_height_ = interpolant(segment_phase)
+            else:
+                segment_phase = 1 - (swing_phase - 0.5) / 0.5
+                swing_height_ = interpolant(segment_phase)
         return swing_height_
 
     def next_foot_location(self, swing_prop, leg_index, state, command):
@@ -43,3 +52,30 @@ class SwingController:
         delta_foot_location = v * self.config.dt
         z_vector = np.array([0, 0, swing_height_ + command.height])
         return foot_location * np.array([1, 1, 0]) + z_vector + delta_foot_location
+
+        # assert swing_prop >= 0 and swing_prop <= 1
+
+        # if swing_prop <= 0.025:
+        #     self.prev_foot_locations[leg_index] = state.foot_locations[:, leg_index]
+        # t_delay = 0.1
+        # remap_t = lambda t: min(max((t - t_delay) / (1 - 2 * t_delay), 0), 1)
+
+        # foot_location = state.foot_locations[:, leg_index]
+        # swing_height_ = self.swing_height(swing_prop)
+        # touchdown_location = self.raibert_touchdown_location(leg_index, command)
+        # time_left = self.config.dt * self.config.swing_ticks * (1.0 - remap_t(swing_prop))
+        # v = (1 / (1 - 2 * t_delay)) * (touchdown_location - foot_location) / time_left * np.array([1, 1, 0])
+        # delta_foot_location = v * self.config.dt# if t_delay <= swing_prop <= 1 - t_delay else 0
+        # z_vector = np.array([0, 0, swing_height_ + command.height])
+        # return foot_location * np.array([1, 1, 0]) + z_vector + delta_foot_location
+
+        # base_velocity = np.array([state.horizontal_velocity[0], state.horizontal_velocity[1], 0])
+        # self.prev_foot_locations[leg_index] -= base_velocity * self.config.dt
+
+        # touchdown_vel_correction_factor = -base_velocity * time_left
+
+        # r0 = self.prev_foot_locations[leg_index]
+        # rf = self.raibert_touchdown_location(leg_index, command) + touchdown_vel_correction_factor
+        # interpolant = lambda t: (r0 + (rf - r0) * (-2 * t ** 3 + 3 * t ** 2)) * np.array([1, 1, 0])
+
+        # return interpolant(remap_t(swing_prop)) + z_vector
