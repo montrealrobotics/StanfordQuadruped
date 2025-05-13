@@ -3,19 +3,20 @@
 ## Overview
 This repository hosts the code for Stanford Pupper and Stanford Woofer, Raspberry Pi-based quadruped robots that can trot, walk, and jump. 
 
-![Pupper CC Max Morse](https://live.staticflickr.com/65535/49614690753_78edca83bc_4k.jpg)
+![pupper-hero](https://github.com/user-attachments/assets/9fb4e451-7c53-4799-b0da-cb8f90fd1488)
+
 
 Video of pupper in action: https://youtu.be/NIjodHA78UE
 
 Project page: https://stanfordstudentrobotics.org/pupper
 
-Documentation & build guide: https://pupper.readthedocs.io/en/latest/
+Documentation & build guide: https://pupper-independent-study.readthedocs.io/en/latest/index.html
 
 ## How it works
 ![Overview diagram](imgs/diagram1.jpg)
-The main program is ```run_robot.py``` which is located in this directory. The robot code is run as a loop, with a joystick interface, a controller, and a hardware interface orchestrating the behavior. 
+The main program is ```run_djipupper.py``` which is located in this directory. The robot code is run as a loop, with a joystick interface, a controller, and a hardware interface orchestrating the behavior. 
 
-The joystick interface is responsible for reading joystick inputs from a UDP socket and converting them into a generic robot ```command``` type. A separate program, ```joystick.py```, publishes these UDP messages, and is responsible for reading inputs from the PS4 controller over bluetooth. The controller does the bulk of the work, switching between states (trot, walk, rest, etc) and generating servo position targets. A detailed model of the controller is shown below. The third component of the code, the hardware interface, converts the position targets from the controller into PWM duty cycles, which it then passes to a Python binding to ```pigpiod```, which then generates PWM signals in software and sends these signals to the motors attached to the Raspberry Pi.
+The joystick interface is responsible for reading joystick inputs and converting them into a generic robot ```command``` type. The controller does the bulk of the work, switching between states (trot, walk, rest, etc) and generating servo position targets. A detailed model of the controller is shown below. The third component of the code, the hardware interface, generates messages that are sent to the Teensy board, these can be either control commands or updates to configuration.
 ![Controller diagram](imgs/diagram2.jpg)
 This diagram shows a breakdown of the robot controller. Inside, you can see four primary components: a gait scheduler (also called gait controller), a stance controller, a swing controller, and an inverse kinematics model. 
 
@@ -29,7 +30,7 @@ Both the stance and swing controllers generate target positions for the feet in 
 
 
 ## How to Build Pupper
-Main documentation: https://pupper.readthedocs.io/en/latest/
+Main documentation: https://pupper-independent-study.readthedocs.io/en/latest/index.html
 
 You can find the bill of materials, pre-made kit purchasing options, assembly instructions, software installation, etc at this website.
 
@@ -39,43 +40,79 @@ You can find the bill of materials, pre-made kit purchasing options, assembly in
 - We also have a Google group set up here: https://groups.google.com/forum/#!forum/stanford-quadrupeds
 
 
-## Using DJI Pupper (for Stuart)
+## Using DJI Pupper
+### Connecting to Pupper
+The first time that you use pupper, if it has not previously been connected to your wifi network, you can connect to pupper using the USB C port on it's back.
+
+* Go to your network settings
+* Click the cog next to the wired connection
+* Go to IPV4 tab
+* Select link-local only
+* Apply
+* Then toggle the connection OFF then ON
+* you should now be able to ssh to the raspberry pi with ssh pi@raspberrypi.local, password 'raspberry'.
+* You can then connect the pupper to wifi if you don't want to have the USB tether to the robot.
+
+### Connect pupper to wifi
+* sudo raspi-config
+* System options
+* S1 Wireless LAN
+* Enter SSID and password for you wifi network
+  
 ### Set up
-* Clone this repo and checkout this branch ("dji")
-* Clone https://github.com/stanfordroboticsclub/PupperKeyboardController and follow its README instructions
+* Clone this repo and checkout this branch ("current_hw_version")
 
 ### First Time Setup
 * Plug the Teensy into your computer and figure out which tty device it is.
-  * It shows up on my computer as "/dev/tty.usbmodem78075901" but it's probably different on yours
-  * Run `ls /dev | grep tty.usbmodem` to easily find out
+  * It shows up on my computer as "/dev/ttyACM0" but it can vary
+  * Run `ls /dev | grep ttyACM
   * Update `SERIAL_PORT` in `djipupper/IndividualConfig.py` with the specific port name
 
+### Homing Pupper
+Before powering on Pupper, it should be placed into its zero position.
+* The zero position is shown in the images below.
+* The hip joints should be square to the body, the feet and the knees should be pressed into the ground.
+* Powering up pupper will start the homing routine, the initial joint state is saved and each joint' zero position is calculated based on this starting state. The legs will then slowly move up into their 'ready' pose. Hip abduction should be 45 degrees out, and the thigh links should be horizontal.
+* From this point you can start to send commands to pupper.
+* This process should be repeated before powering on Pupper, every time.
+
+![IMG_6059](https://github.com/user-attachments/assets/8f40d252-f12a-4b13-aba9-aa9ade0dfecf)
+![IMG_6060](https://github.com/user-attachments/assets/5ace4df8-d6d7-4cf0-b1c3-3c248a9fb421)
+
 ### Using DJI Pupper
-* Plug in the battery
-* Plug in the Teensy to your computer
-* Run the keyboard joystick program
-  * Run `python3 keyboard_joystick.py`
-  * It'll open up a small window and once it's loaded it'll say something like "click to enable"
-  * Note that that window has to be the "active" window on your computer for it to capture keyboard events. So make sure you click it before trying to give commands.
-  * Joystick to keyboard mapping:
-    * L1: q (activate/deactive)
-    * R1: e (trot/rest)
-    * Left joystick: wasd (forward/back & left/right)
-    * Right joystick: arrow keys (tilting up/down and yawing left/right)
-    * D-pad: ijkl (i/k for moving body up/down and j/l for rolling)
-* IMPORTANT: Orient the robot so that all the actuators are in their "zero" position. This means that the legs are extended and pointing straight down and that the abduction motors are perfectly horizontal. Plus/minus 5 degrees is usually what I go for although the closer you can make it the better.
-* Run the python controller with the motor-zeroing option
-  * `python3 run_djipupper.py --zero`
-  * The zeroing option tells the Teensy to store the current leg configuration as the "zero" state
-  * The Teensy will remember this position for as long as it's turned on, so even if we quit the `run_djipupper.py` program, we can re-use the calibration if we don't send the zeroing command.
-* When you're done using the robot, deactivate it by pressing `q` with the keyboard window active. Then press control-c.
-* For all subsequent runs, where you don't want to re-zero, run `python3 run_djipupper.py`. Since we're reusing the calibration from the earlier run, you don't need to move the legs to their zero position before running this command.
-* IMPORTANT: When in doubt, press `q` to deactivate.
+* Place the robot into it's zero position
+* Press the power button
+* The robot will record it's zero position and slowly move into a 'ready' pose
+* Power on the BetaFPV Lite 3 joystick by holding the central button, it should light up and play a small jingle. If the light is red, move the joystick levers until it turns blue.
+* The controller launches on startup of the Pupper, with command:
+  ```
+  python3 run_djipupper.py
+  ```
+* The legs will twitch slightly, this signals that the controller is running on the raspberry pi and is ready to receive commands
+* The joystick should be in startup position, this means that rocker buttons should be centered, SA and SD should be released, joystick analog levers should be centered. No commands will be sent to the robot until this start condition is met.
+* Press 'SA' to activate the robot, it will move into a standing position
+* Press 'SD' to switch to walking move
+* Pressing rocker button 'SC' towards you will switch pupper to 'trot' mode
+* Pressing 'SA' at any time will deactivate the robot and cause it to collapse
 
 ### Tuning
 * You can mess with the cartesian PD control gains by changing values in `djipupper/HardwareConfig.py`
   * `MAX_CURRENT`: it's interesting to put it a little lower, like 4A, to test squishiness.
+  * 'MAX_VELOCITY': Sets the fault velocity, if any actuator is found to be moving at or above this velocity, it will be send a 0 current command.
   * `CART_POSITION_KPS`: Stiffness in the x, y, z directions. I've found 400 - 4000 to be interesting values. 400 is quite loose while 4000-6000 is very stiff. Much higher (>6000) and you risk uncontrolled oscillations even with higher damping.
-  * `CART_POSITION_KDS`: Damping in the x, y, z directions. 100 to 500 seems to be a good range. Use higher values when you're using higher stiffnesses to avoid oscillations, which totally does happen when you use, for example, kp=4000 and kd=1500. 
+  * `CART_POSITION_KDS`: Damping in the x, y, z directions. 100 to 500 seems to be a good range. Use higher values when you're using higher stiffnesses to avoid oscillations, which totally does happen when you use, for example, kp=4000 and kd=1500.
+  * 'LIMITED_CART_POSITION_KPS': This value is set when the robot switches from DEACTIVATED to STANDiNG state, as the joint angle change is large, leaving the default values can cause the robot to move very quickly. This value is reverted to the non limited value after standing state has been reached.
+  * 'LIMITED_CART_POSITION_KDS': Same as the value above.
   * `POSITION_KP` and `POSITION_KD` unused for cartesian pd control.
 * You can also mess with the usual values like x and y velocity, z_clearance (stepping height), etc in `djipupper/Config.py`
+
+### Debug
+To view the messages that the controller is sending to the robot, a script is provided to emulate a serial port.
+ssh to the pupper, either connect via the USB C port on the pupper's back or if the pupper is powered on, you can connect over wifi,
+On the Pupper:
+
+```
+cd StanfordQuadruped
+sudo python3 serial_emulator.py
+
+```
