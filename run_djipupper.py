@@ -2,13 +2,13 @@ import numpy as np
 import time
 from src.Controller import Controller
 from src.JoystickInterface import JoystickInterface
-from src.State import State
+from src.State import State, BehaviorState
 from djipupper import HardwareInterface
 from djipupper.IndividualConfig import SERIAL_PORT  # make the configs more consistent
 from djipupper.Config import Configuration
+import djipupper.HardwareConfig as hw_config
 from djipupper.Kinematics import four_legs_inverse_kinematics
 import argparse
-
 import datetime
 import os
 import msgpack
@@ -65,6 +65,7 @@ def main(FLAGS):
     last_loop = time.time()
     try:
         while True:
+            prev_state = state.behavior_state
             if state.activation == 0:
                 time.sleep(0.02)
                 joystick_interface.set_color(config.ps4_deactivated_color)
@@ -80,6 +81,10 @@ def main(FLAGS):
                     hardware_interface.activate()
                     time.sleep(0.1)
                     state.activation = 1
+                    state.behavior_state = BehaviorState.REST
+                    if prev_state == BehaviorState.DEACTIVATED:
+                        hardware_interface.set_cartesian_parameters(hw_config.LIMITED_CART_POSITION_KPS, hw_config.LIMITED_CART_POSITION_KDS, hw_config.LIMITED_CURRENT, hw_config.LIMITED_VELOCITY)
+
                     continue
             elif state.activation == 1:
                 now = time.time()
@@ -96,8 +101,11 @@ def main(FLAGS):
                         hardware_interface.deactivate()
                         time.sleep(0.1)
                         state.activation = 0
+                        state.behavior_state = BehaviorState.DEACTIVATED
                         continue
                     controller.run(state, command)
+                    if prev_state == BehaviorState.REST and state.behavior_state != BehaviorState.REST:
+                        hardware_interface.set_cartesian_parameters(hw_config.CART_POSITION_KPS, hw_config.CART_POSITION_KDS, hw_config.MAX_CURRENT, hw_config.MAX_VELOCITY)
                     hardware_interface.set_cartesian_positions(
                         state.final_foot_locations
                     )

@@ -9,7 +9,11 @@ from djipupper.HardwareConfig import (
     POSITION_KD,
     CART_POSITION_KPS,
     CART_POSITION_KDS,
+    LIMITED_CART_POSITION_KPS,
+    LIMITED_CART_POSITION_KDS,
     MOTOR_ORIENTATION_CORRECTION,
+    MAX_VELOCITY,
+    LIMITED_VELOCITY
 )
 
 
@@ -73,7 +77,7 @@ class HardwareInterface:
             timeout=0,
         )
         self.set_joint_space_parameters(POSITION_KP, POSITION_KD, MAX_CURRENT)
-        self.set_cartesian_parameters(CART_POSITION_KPS, CART_POSITION_KDS, MAX_CURRENT)
+        self.set_cartesian_parameters(CART_POSITION_KPS, CART_POSITION_KDS, MAX_CURRENT, MAX_VELOCITY)
 
         self.reader = NonBlockingSerialReader(self.serial_handle)
 
@@ -116,7 +120,7 @@ class HardwareInterface:
     def set_joint_space_parameters(self, kp, kd, max_current):
         self.send_dict({"kp": kp, "kd": kd, "max_current": max_current})
 
-    def set_cartesian_parameters(self, kps, kds, max_current):
+    def set_cartesian_parameters(self, kps, kds, max_current, max_velocity):
         """[summary]
 
         Parameters
@@ -128,7 +132,7 @@ class HardwareInterface:
         max_current : [type]
             [description]
         """
-        self.send_dict({"cart_kp": kps, "cart_kd": kds, "max_current": max_current})
+        self.send_dict({"cart_kp": kps, "cart_kd": kds, "max_current": max_current, "fault_velocity": max_velocity})
 
     def send_dict(self, dict):
         payload = msgpack.packb(dict, use_single_float=True)

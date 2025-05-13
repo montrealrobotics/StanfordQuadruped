@@ -100,21 +100,18 @@ class JoystickInterface:
             if not self.initial_check_complete:
                 self.prev_activate_toggle = msg["L1"] > 0
                 self.prev_deactivate_toggle = msg["L1"] < 0
-                self.prev_trot_toggle = msg["circle"] <= 0
-                self.prev_walk_toggle = msg["circle"] > 0
+                self.prev_trot_toggle = msg["circle"] > 0
+                self.prev_walk_toggle = msg["circle"] <= 0
                 self.prev_stand_toggle = msg["R1"] < 0
                 self.prev_move_toggle = msg["R1"] > 0
 
                 return None
 
-        if self.first_call_:
-            self.first_call_ = False
-
         ####### Handle discrete commands ########
         activate_toggle = msg["L1"] > 0
         deactivate_toggle = msg["L1"] < 0
-        trot_toggle = msg["circle"] <= 0
-        walk_toggle = msg["circle"] > 0
+        trot_toggle = msg["circle"] > 0
+        walk_toggle = msg["circle"] <= 0
         stand_toggle = msg["R1"] < 0
         move_toggle = msg["R1"] > 0
 
@@ -166,6 +163,9 @@ class JoystickInterface:
         command.roll = (
             state.roll + message_dt * self.config.roll_speed * roll_movement
         )
+        if self.first_call_:
+            self.first_call_ = False
+            return None
 
         return command
 
