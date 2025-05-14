@@ -116,3 +116,9 @@ cd StanfordQuadruped
 sudo python3 serial_emulator.py
 
 ```
+If everything is running, you can also watch the port on the raspberry pi to see the serial prints from the firmware:
+```
+tail -f /dev/ttyACM0
+```
+
+For debugging the firmware, in VS code, with PlatformIO, you can run 'upload and monitor' and check the output in the console. If you connect your laptop to the Teensy board and power on the Pupper with the power switch, you can run the firmware and check the startup routine, obviously no commands will be sent from the pi but the firmware will still move the motors during the homing. So be mindful of this if changing the firmware code.
